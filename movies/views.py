@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Avg, Count
 from .models import Movie
 from .serializers import MovieListSerializer, MovieDetailSerializer
+from rest_framework.decorators import action
 
 class MovieViewSet(viewsets.ModelViewSet):
     queryset = Movie.objects.all()
@@ -32,4 +33,14 @@ class MovieViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
         return [permissions.IsAdminUser()]
+    
+    @action(detail=False, methods=['get'])
+    def popular(self, request):
+        """리뷰 많은 순으로 인기 영화 TOP 10"""
+        movies = Movie.objects.annotate(
+            review_count=Count('reviews'),
+            average_rating=Avg('reviews__rating')
+        ).order_by('-review_count')[:10]
+        serializer = MovieListSerializer(movies, many=True)
+        return Response(serializer.data)
 # Create your views here.

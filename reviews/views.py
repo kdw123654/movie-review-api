@@ -5,6 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Review
 from .serializers import ReviewListSerializer, ReviewDetailSerializer
 from .permissions import IsOwnerOrReadOnly
+from rest_framework.decorators import action
 
 class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
@@ -26,4 +27,16 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my(self, request):
+        """내가 작성한 리뷰 목록"""
+        queryset = self.get_queryset().filter(user=request.user)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = ReviewListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = ReviewListSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
 # Create your views here.
